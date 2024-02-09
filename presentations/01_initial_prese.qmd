@@ -1,0 +1,159 @@
+---
+title: "Reproducible workflow for scientific writing with R"
+author: "Kimmo Suokas"
+date: 2024-02-09
+format:
+  revealjs:
+    progress: true
+    history: true
+---
+
+```{r}
+#| warning: false
+library(here)
+library(data.table)
+library(ggplot2)
+library(ggrepel)
+library(ggtext)
+library(ggpubr)
+library(stringr)
+library(patchwork)
+library(gt)
+
+source(here("R", "11_results.R"))
+
+```
+
+```{r}
+numb <- function(x, n_decim=2, big_mark = ' '){
+  #format(as.numeric(sprintf(paste0("%.", n_decim, "f"), x)), big.mark = big_mark)
+  formatC(x, big.mark = big_mark, digits = n_decim, format = 'f')
+  }
+```
+
+##  {auto-animate="true"}
+
+::: {style="margin-top: 100px;"}
+Writing complitely without MS Word
+:::
+
+##  {auto-animate="true"}
+
+::: {style="margin-top: 300px; font-size: 1.5em; color: red;"}
+Writing complitely without MS Word
+:::
+
+::: {.fragment .fade-up}
+(almost)
+:::
+
+::: {.fragment .fade-right}
+A case example:
+:::
+
+
+## [Municipality level correlation of night lights (by satellites) and poverty risk in Finland ]{style="color:orange;"}
+
+Let's use
+
+-   Average masked Visible Infrared Imaging Radiometer Suite (VIIRS) in `r y` by [Colorado School of Mines](https://eogdata.mines.edu/nighttime_light/),
+-   Statistics Finland data, accessed using `library(pxweb)`,
+-   Municipality data, accessed using `library(geofi)`
+
+## Night lights
+
+
+```{r}
+#| fig-width: 8
+#| fig-height: 15
+
+a <- figs$nl 
+
+a
+#::: {.column-page layout-ncol="2"}
+
+```
+
+## Night lights 
+
+```{r}
+#| fig-width: 16
+#| fig-height: 15
+b <- figs$nl_kunnat
+a + b
+
+```
+
+
+## Night lights 
+
+```{r}
+#| fig-width: 24
+#| fig-height: 15
+c <- figs$nl_mean+ theme(legend.title = element_text(size=25), legend.text = element_text(size=20))
+
+a + b + c
+
+```
+
+
+
+## The brightest municipalities {.r-stretch}
+
+```{r}
+kunnat %>% as.data.table() %>% .[order(-lights_mean),.(nimi, lights_mean = lights_mean %>% round(2))] %>% head(10) %>% gt()
+```
+
+
+## Correlation: low income and mean night lights
+
+
+```{r}
+scttr$tulot_nl
+```
+
+## Correlation: summer cottages and mean night lights
+
+```{r}
+scttr$mokit_nl
+```
+
+## Correlation: low income and summer cottages
+
+```{r}
+scttr$tulot_mokit 
+```
+
+## {auto-animate=true auto-animate-easing="ease-in-out"}
+
+
+::: {.r-hstack}
+::: {data-id="box1" auto-animate-delay="0" style="background: #2780e3; width: 200px; height: 150px; margin: 10px;"}
+:::
+
+::: {data-id="box2" auto-animate-delay="0.1" style="background: #3fb618; width: 200px; height: 150px; margin: 10px;"}
+:::
+
+::: {data-id="box3" auto-animate-delay="0.2" style="background: #e83e8c; width: 200px; height: 150px; margin: 10px;"}
+:::
+:::
+
+## {auto-animate=true auto-animate-easing="ease-in-out"}
+
+::: {.r-stack}
+:::{data-id="box1" style="background: #2780e3; width: 350px; height: 350px; border-radius: 200px;"}
+:::
+
+:::{data-id="box2" style="background: #3fb618; width: 250px; height: 250px; border-radius: 200px;"}
+:::
+
+:::{data-id="box3" style="background: #e83e8c; width: 150px; height: 150px; border-radius: 200px;"}
+:::
+:::
+
+::: {.fragment}
+:::{style="text-align: center;"}
+Now, let's write the paper
+:::
+:::
+

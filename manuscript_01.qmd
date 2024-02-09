@@ -1,0 +1,455 @@
+---
+title: "Writing a paper with R and Quarto 1.4 about municipality level correlation of night lights (by satellites) and poverty risk in Finland"
+author:
+  - name: Christian Hakulinen
+    corresponding: true
+    orcid: 0000-0001-8629-9960
+    affiliations:
+      - ref: helsinki
+      - ref: thl
+  - name: Ripsa Niemi
+    affiliations:
+      - ref: helsinki
+  - name: Mai Gutvilig
+    affiliations:
+      - ref: helsinki
+  - name: Kimmo Suokas
+    orcid: 0000-0001-6296-6343
+    email: kimmo.suokas@helsinki.fi
+    affiliations:
+      - ref: tuni
+      - ref: helsinki
+affiliations: 
+  - id: helsinki
+    name: University of Helsinki, Department of Psychology and Logopedics, Faculty of Medicine
+    address: PO Box 21 (Haartmaninkatu 3)
+    postal-code: 00014
+    city: Helsinki
+    country: Finland
+  - id: thl
+    name: National Institute for Health and Welfare
+    department: Department of Health and Social Care Systems
+    city: Helsinki
+    country: Finland
+  - id: tuni
+    name: Tampere University, Faculty of Social Sciences
+    address: 
+    country: Finland
+execute:
+  echo: false
+  warning: false
+fig-dpi: 600
+crossref:
+  custom:
+    - kind: float
+      reference-prefix: Table S
+      key: supptbl
+      space-before-numbering: false
+    - kind: float
+      reference-prefix: Figure S
+      key: suppfig
+      space-before-numbering: false
+format: docx
+filters:
+  - authors-block
+  - docx-landscape.lua
+editor: 
+  markdown: 
+    wrap: 72
+bibliography: references.bib
+csl: american-medical-association.csl
+---
+
+```{r general_settings}
+#| warning: false
+library(here)
+library(data.table)
+library(ggplot2)
+library(ggrepel)
+library(ggtext)
+library(ggpubr)
+library(stringr)
+library(patchwork)
+library(flextable)
+
+numb <- function(x, n_decim=2, big_mark = ' '){
+  #format(as.numeric(sprintf(paste0("%.", n_decim, "f"), x)), big.mark = big_mark)
+  formatC(x, big.mark = big_mark, decimal.mark = "·", digits = n_decim, format = 'f')
+  }
+
+theme_set(theme_void())
+
+footnote_symbols <- c("†", "‡", "§", "¶", letters)
+
+```
+
+```{r results_in}
+source(here("R", "11_results.R"))
+
+```
+
+```{r tables_data}
+
+tbl_mokit <- list()
+tbl_mokit$n_rows <- 10
+tbl_mokit$top <- kunnat %>% as.data.table() %>% .[order(-mokit_lkm),.(nimi, mokit = mokit_lkm)] %>% head(tbl_mokit$n_rows)
+tbl_mokit$bottom <- kunnat %>% as.data.table() %>% .[order(-mokit_lkm),.(nimi, mokit = mokit_lkm)] %>% tail(tbl_mokit$n_rows)
+
+tbl_nl <- list()
+tbl_nl$n_rows <- 12
+tbl_nl$tbl <- kunnat %>% as.data.table() %>% .[order(-lights_mean),.(nimi, lights_mean)] %>% head(tbl_nl$n_rows)
+
+```
+
+```{r results_to_text}
+
+to_text <- list()
+
+to_text$y <- y
+to_text$n_kunnat <- kunnat %>% as.data.table() %>% .[,.N]
+to_text$max_nl_kunta <- kunnat %>% as.data.table() %>% .[lights_mean == max(lights_mean)]
+
+to_text$max_mokit_nimi <- tbl_mokit$top[1, nimi] 
+to_text$max_mokit_n <- tbl_mokit$top[1, mokit] %>% numb(n_decim = 0)
+
+to_text$p_nl <- p_vals$nl %>% numb()
+```
+
+```{r dgs}
+f2x <- c("f21", "f22", "f23", "f24", "f25", "f28", "f29")
+f2x_labs <- c("Schizotypal disorder (F21)", 
+              "Persistent delusional disorders (F22)", 
+              "Acute and transient psychotic disorders (F23)", 
+              "Induced delusional disorder (F24)", 
+              "Schizoaffective disorders (F25)", 
+              "Other nonorganic psychotic disorders (F28)", 
+              "Unspecified nonorganic psychosis (F29)")
+
+tbl_dgs <- data.table(
+  levels = c("any","any_psy", 
+             "f0", "f00_f03", "f04_f09", 
+             "f1", 
+             "f2", "f20", "f2_no_sch", 
+             f2x,
+             "f3", "f30_f31", "f32_f33", "f3_other", 
+             "f4", "f40_f41", "f42", "f4_other", 
+             "f5", #"f50", "f51", "f53", "f5_other", 
+             "f6", "f7", "f8", "f9", "f90", "f9_other"),
+             #, "psychoses"),
+  labs = c("Any mental disorder","Any mental disorder", 
+             "Organic mental disorders (F0)", "Dementias (F00-03)", "Other (F04-09)", 
+             "Substance use disorders (F1)", 
+             "Schizophrenia spectrum (F2)", "Schizophrenia (F20)", "Other (F21-29)", 
+           f2x_labs,
+             "Mood disorders (F3)", "Mania and bipolar disorder (F30-31)", 
+             "Depressive disorders (F32-F33)", "Other (F34-F39)", 
+             "Neurotic, stress-related and somatoform disorders (F4)", "Anxiety disorders (F40-41)",
+             "Obsessive - compulsive disorder (F42)", "Other (F43-48)", 
+             "Behavioural syndromes (F5)", #"f50", "f51", "f53", "f5_other", 
+             "Personality disorders (F6)", 
+             "Mental retardation (F7)", "Disorders of psychological development (F8)",
+             "Behavioural and emotional disorders (F90-98)", "ADHD (F90)", "Other (F91-98)")
+           #, "All psychoses")
+)
+
+tbl_dgs[, subgr := labs %>% str_detect("\\(F\\d\\d")]
+tbl_dgs[levels == "f9", subgr := F]
+
+```
+
+ORCID or the main author:
+
+**Data availability statement:** The data that support the findings of
+this study are available from the National Institute of Health and
+Welfare ([www.thl.fi](https://thl.fi/fi/)) and Statistics Finland
+([www.stat.fi](https://www.stat.fi/)). Restrictions apply to the
+availability of these data, which were used under license for this
+study. Inquiries about secure access to data should be directed to data
+permit authority Findata ([findata.fi/en](https://findata.fi/en/)).
+
+**Funding statement:** Kimmo Suokas was supported by the Jalmari and
+Rauha Ahokas Foundation and the Finnish Psychiatric Association.
+Christian Hakulinen was supported by the Academy of Finland (354237) and
+the European Union (ERC, MENTALNET, 101040247). Views and opinions
+expressed are however those of the authors only and do not necessarily
+reflect those of the European Union or the European Research Council.
+Neither the European Union nor the granting authority can be held
+responsible for them.
+
+**Conflict of interest disclosure:** We declare no competing interests.
+
+**Ethics approval statement:** The Research Ethics Committee of the
+Finnish Institute for Health and Welfare approved the study protocol
+(decision #10/2016§751).
+
+**Patient consent statement:** Informed consent is not required for
+register-based studies in Finland.
+
+**Acknowledgments:**
+
+\newpage
+
+## Abstract
+
+**Objectives:** Night lights have been used as a proxy measure for
+economic circumnstances. Let's write a paper about it.
+
+**Methods:** We drew colorful figures and studied correlations.
+
+**Results:** Overall, there are `r to_text$n_kunnat` municipalities.
+Municipality with most cottages is `r to_text$max_nl_kunta[,nimi]`. The
+greatest number of catteges is in `r to_text$max_mokit_nimi`,
+`r to_text$max_mokit_n`. P-values was `r to_text$p_nl`.
+
+**Conclusions:** No correlation found. Quarto 1.4, published 24 Jan
+2024, seems like a big step.
+
+**Keywords:** Satellites, holydays, psychiatry, epidemiology
+
+\newpage
+
+## Introduction
+
+But I must explain to you how all this mistaken idea of denouncing
+pleasure and praising pain was born and I will give you a complete
+account of the system, and expound the actual teachings of the great
+explorer of the truth, the master-builder of human happiness. No one
+rejects, dislikes, or avoids pleasure itself, because it is pleasure,
+but because those who do not know how to pursue pleasure rationally
+encounter consequences that are extremely painful. Nor again is there
+anyone who loves or pursues or desires to obtain pain of itself, because
+it is pain, but because occasionally circumstances occur in which toil
+and pain can procure him some great pleasure. To take a trivial example,
+which of us ever undertakes laborious physical exercise, except to
+obtain some advantage from it? But who has any right to find fault with
+a man who chooses to enjoy a pleasure that has no annoying consequences,
+or one who avoids a pain that produces no resultant pleasure. This is a
+1914 translation by H. Rackham, <https://www.lipsum.com>.
+
+Citation to an important paper.[@suokas]
+
+## Method
+
+We used R with Quarto 1.4 to to do this. See:
+<https://quarto.org/docs/blog/posts/2024-01-24-1.4-release/>
+
+### Analysis
+
+We used average masked Visible Infrared Imaging Radiometer Suite (VIIRS)
+in `r y` by [Colorado School of
+Mines](https://eogdata.mines.edu/nighttime_light/), Statistics Finland
+data, accessed using `library(pxweb)`, and municipality data, accessed
+using `library(geofi)`.
+
+## Results
+
+Overall, there are `r to_text$n_kunnat` municipalities. Municipality
+with most cottages is `r to_text$max_nl_kunta[,nimi]`. The greatest
+number of catteges is in `r to_text$max_mokit_nimi`,
+`r to_text$max_mokit_n`. P-values was `r to_text$p_nl`.
+
+See @tbl-mokit. See @fig-nl also. More in @supptbl-mokit.
+
+The brightest municipalites are in @tbl-nl.
+
+### Additional analyses
+
+See @suppfig-mp. See @suppfig-cp.
+
+## Discussion
+
+We found no correlations but we drew colorful figures.
+
+The main pro is easy editing.
+
+-   Minor changes in the analyses well be updated automatically.
+
+-   References to Tables and Figures. Custom Float Cross-Reference (1.4)
+
+-   Authors list
+
+<https://quarto.org/docs/authoring/front-matter.html>
+
+### Limitations
+
+There are some painful steps in this workflow.
+
+-   Using Mac may be problematic (Quarto 1.3).
+
+-   Formatting docx is difficult. Landscape pages, complex tables,
+    figure size, etc.
+
+    -   <https://github.com/kapsner/authors-block> for title page
+
+    -   Custom solution for landscape
+        <https://stackoverflow.com/questions/73784720/changing-page-orientation-in-word-using-quarto>
+
+    -   you can use docx templates..
+
+### Conclusions and future
+
+Quarto 1.4, published 24 Jan 2024, brought ease to this workflow. It
+comes with manuscript projects, dashboards and Typst, among other
+things. It might turn out a big step, we well see.
+
+[Typst](https://github.com/typst/typst) is a new open-source
+markup-based typesetting system that is designed to be as powerful as
+LaTeX while being much easier to learn and use.
+
+Read more:
+
+-   <https://mine.quarto.pub/manuscripts-conf23/>
+
+-   <https://quarto.org/docs/manuscripts/authoring/rstudio.html>
+
+\newpage
+
+## Conflict of Interest Statement
+
+## Other stuff if not in the beginning
+
+\newpage
+
+## References
+
+::: {#refs}
+:::
+
+\newpage
+
+## Tables
+
+### @tbl-mokit. Municipalities with the highest number of cottages
+
+::: {#tbl-mokit}
+```{r}
+span <- "Top"
+#tbl_mokit$col_lab <- paste0("Cottages", "<sup>", footnote_symbols[1], "</sup>" ,", N")
+nimi_lab <- "Name"
+
+tbl_mokit$top %>% 
+  .[, .(nimi, n = mokit %>% numb(n_decim = 0))] %>% 
+  flextable() %>% 
+  set_header_labels(
+    values = list(nimi = nimi_lab, n = tbl_mokit$col_lab)
+    ) %>% 
+  add_header_row(values = paste(span, tbl_mokit$n_rows), colwidths = 2) %>% 
+  autofit() %>% 
+  compose(i = 2, j = 2, part = "header", value = as_paragraph("Cottages", as_sup(footnote_symbols[1]), ", N") ) %>% 
+  theme_apa()
+
+```
+:::
+
+^`r footnote_symbols[1]`^All colors included.
+
+\newpage
+
+### @tbl-nl. The top `r tbl_nl$n_rows` brightest municipalities
+
+::: {#tbl-nl}
+```{r}
+
+col_lab <- "Mean night light"
+
+tbl_nl$tbl %>% 
+  .[, .(nimi, n = lights_mean %>% numb(n_decim = 0))] %>% 
+  flextable() %>% 
+  set_header_labels(
+    values = list(nimi = nimi_lab, n = col_lab)
+    )  %>% 
+  autofit() %>% 
+  theme_apa()
+
+```
+:::
+
+## Figures
+
+### @fig-nl. Night lights in Finland in `r to_text$y`
+
+```{r}
+#| label: fig-nl
+#| fig-height: 12
+#| fig-width: 20
+
+fig_labs <- list()
+fig_labs$mokit <- "Cottages, N"
+fig_labs$pienituloisuusaste <- "At risk of poverty, %"
+fig_labs$nl <- "Mean night lights"
+
+figs$nl_kunnat + (figs$mokit +labs(fill = fig_labs$mokit)) + (figs$pienituloisuus + labs(fill = fig_labs$pienituloisuusaste)) +plot_annotation(tag_levels = 'a')
+
+```
+
+\newpage
+
+### @fig-mp. Association of night lights and poverty
+
+::: {#fig-mp}
+```{r}
+#| warning: false
+#| fig-height: 4
+#| fig-width: 6
+
+scttr$tulot_nl+ labs(y = fig_labs$pienituloisuusaste, x = fig_labs$nll)
+```
+:::
+
+\newpage
+
+## Supplementary Tables
+
+### @supptbl-mokit Municipalities with the lowest number of cottages
+
+::: {#supptbl-mokit}
+```{r}
+
+span <- "Bottom"
+
+tbl_mokit$bottom %>% 
+  .[order(mokit)] %>% 
+  .[, .(nimi, n = mokit %>% numb(n_decim = 0))] %>% 
+  flextable() %>% 
+  set_header_labels(
+    values = list(nimi = nimi_lab, n = tbl_mokit$col_lab)
+    ) %>% 
+  add_header_row(values = paste(span, tbl_mokit$n_rows), colwidths = 2) %>% 
+  autofit() %>% 
+    compose(i = 2, j = 2, part = "header", value = as_paragraph("Cottages", as_sup(footnote_symbols[1]), ", N") ) %>% 
+  theme_apa()
+
+```
+:::
+
+^`r footnote_symbols[1]`^All colors included.
+
+\newpage
+
+## Supplementary Figures
+
+### @suppfig-mp. Association of number of cottages and night lights
+
+::: {#suppfig-mp}
+```{r}
+#| warning: false
+#| fig-height: 4
+#| fig-width: 6
+
+scttr$tulot_mokit+ labs(y = fig_labs$mokit, x = fig_labs$pienituloisuusaste)
+```
+:::
+
+\newpage
+
+### @suppfig-cp. Association of number of cottages and poverty
+
+::: {#suppfig-cp}
+```{r}
+#| warning: false
+#| fig-height: 4
+#| fig-width: 6
+
+scttr$tulot_mokit+ labs(y = fig_labs$mokit, x = fig_labs$pienituloisuusaste)
+```
+:::

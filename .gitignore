@@ -47,3 +47,13 @@ po/*~
 
 # RStudio Connect folder
 rsconnect/
+
+_extensions/
+
+figs/
+
+01_initial_prese_files/
+
+.DS_Store
+
+presentations/
