@@ -52,7 +52,6 @@ crossref:
 format: docx
 filters:
   - authors-block
-  - docx-landscape.lua
 editor: 
   markdown: 
     wrap: 72
@@ -72,23 +71,29 @@ library(stringr)
 library(patchwork)
 library(flextable)
 
+
+# turn numbers into characters with specified format. 
 numb <- function(x, n_decim=2, big_mark = ' '){
   #format(as.numeric(sprintf(paste0("%.", n_decim, "f"), x)), big.mark = big_mark)
   formatC(x, big.mark = big_mark, decimal.mark = "·", digits = n_decim, format = 'f')
   }
 
-theme_set(theme_void())
-
+# table footnote symbols
 footnote_symbols <- c("†", "‡", "§", "¶", letters)
+
+# ggplot theme
+theme_set(theme_void())
 
 ```
 
 ```{r results_in}
+# Get raw results:
 source(here("R", "11_results.R"))
-
 ```
 
 ```{r tables_data}
+
+# preproces tables here before text, so you can be sure that the numbers in the text will be indetical to those in tables
 
 tbl_mokit <- list()
 tbl_mokit$n_rows <- 10
@@ -103,6 +108,8 @@ tbl_nl$tbl <- kunnat %>% as.data.table() %>% .[order(-lights_mean),.(nimi, light
 
 ```{r results_to_text}
 
+# placeholders for results mentioned in abstract and main text. Prepare everythin here for easier control of the workflow
+
 to_text <- list()
 
 to_text$y <- y
@@ -116,6 +123,9 @@ to_text$p_nl <- p_vals$nl %>% numb()
 ```
 
 ```{r dgs}
+
+# this is just an example. ICD-10 labels can be tricky to handle for text, figures and tables. One solution is to have everything in a singe data.table like this
+
 f2x <- c("f21", "f22", "f23", "f24", "f25", "f28", "f29")
 f2x_labs <- c("Schizotypal disorder (F21)", 
               "Persistent delusional disorders (F22)", 

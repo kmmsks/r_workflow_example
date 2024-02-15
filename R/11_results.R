@@ -36,7 +36,7 @@ roi_lights_final <- rast(here("data_processed", "roi_light.tif"))
 roi_lights_df    <- fread(here("data_processed", "roi_light_df.csv")) 
 
 
-kunnat %<>% subset(nimi != "Närpiö")
+#kunnat %<>% subset(nimi != "Närpiö")
 
 # Region of Interest -----------------------------------------------------------
 roi_sf <- kunnat %>% st_union()
@@ -77,6 +77,8 @@ pal <- colorRampPalette(
 )(512)
 
 ### fig_nl ----
+
+# code for this figure from: https://medium.com/@bagasanin/java-islands-night-light-swipe-maps-using-r-shiny-5ff666cf1a16
 
 figs$nl <- roi_lights_df %>% ggplot() +
   geom_sf(
